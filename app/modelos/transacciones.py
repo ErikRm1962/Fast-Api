@@ -1,14 +1,30 @@
-from sqlalchemy import Column, Integer, Float, ForeignKey
-from sqlalchemy.orm import relationship
-from ..conexion_bd import Base
+from sqlmodel import SQLModel, Field, Relationship
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .facturas import Factura
 
 
-class TransaccionBD(Base):
-    __tablename__ = "transaccion"
+class TransaccionBase(SQLModel):
+    cantidad: int
+    valor_unitario: float
 
-    id = Column(Integer, primary_key=True, index=True)
-    cantidad = Column(Integer, nullable=False)
-    valor_unitario = Column(Float, nullable=False)
-    factura_id = Column(Integer, ForeignKey("factura.id"), nullable=False)
 
-    factura = relationship("FacturaBD", back_populates="transacciones")
+class Transaccion(TransaccionBase, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    factura_id: int | None = Field(default=None, foreign_key="factura.id")
+
+    factura: "Factura" = Relationship(back_populates="transacciones")
+
+
+class TransaccionCrear(TransaccionBase):
+    pass
+
+
+class TransaccionEditar(TransaccionBase):
+    pass
+
+
+class TransaccionRespuesta(TransaccionBase):
+    id: int
+    factura_id: int
