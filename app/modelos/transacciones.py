@@ -1,20 +1,14 @@
-from pydantic import BaseModel
+from sqlalchemy import Column, Integer, Float, ForeignKey
+from sqlalchemy.orm import relationship
+from ..conexion_bd import Base
 
 
-# Modelo de transacciones
-class TransaccionBase(BaseModel):
-    cantidad: int
-    valor_unitario: float
+class TransaccionBD(Base):
+    __tablename__ = "transaccion"
 
+    id = Column(Integer, primary_key=True, index=True)
+    cantidad = Column(Integer, nullable=False)
+    valor_unitario = Column(Float, nullable=False)
+    factura_id = Column(Integer, ForeignKey("factura.id"), nullable=False)
 
-class TransaccionCrear(TransaccionBase):
-    pass
-
-
-class TransaccionEditar(TransaccionBase):
-    pass
-
-
-class Transaccion(TransaccionBase):
-    id: int | None = None
-    factura_id: int | None = None  # relación con el modelo factura
+    factura = relationship("FacturaBD", back_populates="transacciones")

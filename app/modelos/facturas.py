@@ -1,34 +1,16 @@
-from pydantic import BaseModel, computed_field
-from datetime import datetime
-from .clientes import Cliente
-from .transacciones import Transaccion
+from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy.orm import relationship
+from ..conexion_bd import Base
 
 
-# Modelo de facturas
-class FacturaBase(BaseModel):
-    fecha: str = datetime.now().strftime("%Y-%m-%d")
-    cliente: Cliente
-    transacciones: list[Transaccion] = []
+class FacturaBD(Base):
+    __tablename__ = "factura"
 
-    @computed_field
-    @property
-    def valor_total(self) -> float:
-        # Calcula el total sumando (cantidad * valor_unitario) de cada transaccion
-        total_factura = 0.0
-        if not self.transacciones:
-            return total_factura
-        for transaccion in self.transacciones:
-            total_factura += transaccion.valor_unitario * transaccion.cantidad
-        return total_factura
+    id = Column(Integer, primary_key=True, index=True)
+    fecha = Column(String, nullable=False)
+    cliente_id = Column(Integer, ForeignKey("cliente.id"), nullable=False)
 
-
-class FacturaCrear(BaseModel):
-    fecha: str = datetime.now().strftime("%Y-%m-%d")
-
-
-class FacturaEditar(BaseModel):
-    fecha: str
-
-
-class Factura(FacturaBase):
-    id: int | None = None
+    cliente = relationship("ClienteBD", back_populates="facturas")
+    transacciones = relationship(
+        "TransaccionBD", back_populates="factura", cascade="all, delete-orphan"
+    )
