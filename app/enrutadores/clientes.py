@@ -1,22 +1,21 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlmodel import Session, select
 from ..conexion_bd import obtener_bd
-from ..modelos.clientes import ClienteBD
-from ..esquemas.clientes import Cliente, ClienteCrear, ClienteEditar
+from ..modelos.clientes import Cliente, ClienteCrear, ClienteEditar, ClienteRespuesta
 
 rutas_clientes = APIRouter()
 
 
 # ENDPOINTS DE CLIENTES
 
-@rutas_clientes.get("/clientes", response_model=list[Cliente])
-async def listar_clientes(bd: Session = Depends(obtener_bd)):
-    return bd.query(ClienteBD).all()
+@rutas_clientes.get("/clientes", response_model=list[ClienteRespuesta])
+def listar_clientes(bd: Session = Depends(obtener_bd)):
+    return bd.exec(select(Cliente)).all()
 
 
-@rutas_clientes.get("/clientes/{cliente_id}", response_model=Cliente)
-async def listar_cliente(cliente_id: int, bd: Session = Depends(obtener_bd)):
-    cliente = bd.query(ClienteBD).filter(ClienteBD.id == cliente_id).first()
+@rutas_clientes.get("/clientes/{cliente_id}", response_model=ClienteRespuesta)
+def listar_cliente(cliente_id: int, bd: Session = Depends(obtener_bd)):
+    cliente = bd.get(Cliente, cliente_id)
     if not cliente:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -25,40 +24,42 @@ async def listar_cliente(cliente_id: int, bd: Session = Depends(obtener_bd)):
     return cliente
 
 
-@rutas_clientes.post("/clientes", response_model=Cliente)
-async def crear_cliente(datos_cliente: ClienteCrear, bd: Session = Depends(obtener_bd)):
-    cliente_bd = ClienteBD(**datos_cliente.model_dump())
-    bd.add(cliente_bd)
+@rutas_clientes.post("/clientes", response_model=ClienteRespuesta)
+def crear_cliente(datos_cliente: ClienteCrear, bd: Session = Depends(obtener_bd)):
+    cliente = Cliente.model_validate(datos_cliente)
+    bd.add(cliente)
     bd.commit()
-    bd.refresh(cliente_bd)
-    return cliente_bd
+    bd.refresh(cliente)
+    return cliente
 
 
-@rutas_clientes.patch("/clientes/{cliente_id}", response_model=Cliente)
-async def editar_cliente(
+@rutas_clientes.patch("/clientes/{cliente_id}", response_model=ClienteRespuesta)
+def editar_cliente(
     cliente_id: int, datos_cliente: ClienteEditar, bd: Session = Depends(obtener_bd)
 ):
-    cliente_bd = bd.query(ClienteBD).filter(ClienteBD.id == cliente_id).first()
-    if not cliente_bd:
+    cliente = bd.get(Cliente, cliente_id)
+    if not cliente:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Cliente con id {cliente_id} no existe.",
         )
-    for campo, valor in datos_cliente.model_dump().items():
-        setattr(cliente_bd, campo, valor)
+    datos_actualizados = datos_cliente.model_dump(exclude_unset=True)
+    for campo, valor in datos_actualizados.items():
+        setattr(cliente, campo, valor)
+    bd.add(cliente)
     bd.commit()
-    bd.refresh(cliente_bd)
-    return cliente_bd
+    bd.refresh(cliente)
+    return cliente
 
 
-@rutas_clientes.delete("/clientes/{cliente_id}", response_model=Cliente)
-async def eliminar_cliente(cliente_id: int, bd: Session = Depends(obtener_bd)):
-    cliente_bd = bd.query(ClienteBD).filter(ClienteBD.id == cliente_id).first()
-    if not cliente_bd:
+@rutas_clientes.delete("/clientes/{cliente_id}", response_model=ClienteRespuesta)
+def eliminar_cliente(cliente_id: int, bd: Session = Depends(obtener_bd)):
+    cliente = bd.get(Cliente, cliente_id)
+    if not cliente:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Cliente con id {cliente_id} no existe.",
         )
-    bd.delete(cliente_bd)
+    bd.delete(cliente)
     bd.commit()
-    return cliente_bd
+    return cliente
