@@ -1,76 +1,72 @@
-from fastapi import APIRouter, HTTPException, status
-from ..modelos.facturas import Factura, FacturaCrear, FacturaEditar
-from ..listas import lista_clientes, lista_facturas
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from ..conexion_bd import obtener_bd
+from ..modelos.clientes import ClienteBD
+from ..modelos.facturas import FacturaBD
+from ..esquemas.facturas import Factura, FacturaCrear, FacturaEditar
 
 rutas_facturas = APIRouter()
 
 
 # ENDPOINTS DE FACTURAS
 
-# Listar todas las facturas
 @rutas_facturas.get("/facturas", response_model=list[Factura])
-async def listar_facturas():
-    return lista_facturas
+async def listar_facturas(bd: Session = Depends(obtener_bd)):
+    return bd.query(FacturaBD).all()
 
 
-# Listar una sola factura
 @rutas_facturas.get("/facturas/{factura_id}", response_model=Factura)
-async def listar_factura(factura_id: int):
-    for obj_factura in lista_facturas:
-        if obj_factura.id == factura_id:
-            return obj_factura
-    raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail=f"La factura con id {factura_id}, no existe",
-    )
+async def listar_factura(factura_id: int, bd: Session = Depends(obtener_bd)):
+    factura = bd.query(FacturaBD).filter(FacturaBD.id == factura_id).first()
+    if not factura:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"La factura con id {factura_id}, no existe",
+        )
+    return factura
 
 
-# Crear factura (asociada a un cliente)
 @rutas_facturas.post("/facturas/{cliente_id}", response_model=Factura)
-async def crear_factura(cliente_id: int, datos_factura: FacturaCrear):
-    # buscar cliente
-    cliente_encontrado = None
-    for cliente in lista_clientes:
-        if cliente.id == cliente_id:
-            cliente_encontrado = cliente
-
-    if not cliente_encontrado:
+async def crear_factura(
+    cliente_id: int, datos_factura: FacturaCrear, bd: Session = Depends(obtener_bd)
+):
+    cliente = bd.query(ClienteBD).filter(ClienteBD.id == cliente_id).first()
+    if not cliente:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"El cliente con id {cliente_id}, no existe.",
         )
-
-    factura_val = Factura(
-        fecha=datos_factura.fecha,
-        cliente=cliente_encontrado,
-        transacciones=[],
-    )
-    factura_val.id = len(lista_facturas) + 1
-    lista_facturas.append(factura_val)
-    return factura_val
+    factura_bd = FacturaBD(fecha=datos_factura.fecha, cliente_id=cliente_id)
+    bd.add(factura_bd)
+    bd.commit()
+    bd.refresh(factura_bd)
+    return factura_bd
 
 
-# Editar factura
 @rutas_facturas.patch("/facturas/{factura_id}", response_model=Factura)
-async def editar_factura(factura_id: int, datos_factura: FacturaEditar):
-    for factura in lista_facturas:
-        if factura.id == factura_id:
-            factura.fecha = datos_factura.fecha
-            return factura
-    raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail=f"La factura con id {factura_id}, no existe",
-    )
+async def editar_factura(
+    factura_id: int, datos_factura: FacturaEditar, bd: Session = Depends(obtener_bd)
+):
+    factura_bd = bd.query(FacturaBD).filter(FacturaBD.id == factura_id).first()
+    if not factura_bd:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"La factura con id {factura_id}, no existe",
+        )
+    factura_bd.fecha = datos_factura.fecha
+    bd.commit()
+    bd.refresh(factura_bd)
+    return factura_bd
 
 
-# Eliminar factura
 @rutas_facturas.delete("/facturas/{factura_id}", response_model=Factura)
-async def eliminar_factura(factura_id: int):
-    for i, factura in enumerate(lista_facturas):
-        if factura.id == factura_id:
-            factura_eliminada = lista_facturas.pop(i)
-            return factura_eliminada
-    raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail=f"La factura con id {factura_id}, no existe",
-    )
+async def eliminar_factura(factura_id: int, bd: Session = Depends(obtener_bd)):
+    factura_bd = bd.query(FacturaBD).filter(FacturaBD.id == factura_id).first()
+    if not factura_bd:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"La factura con id {factura_id}, no existe",
+        )
+    bd.delete(factura_bd)
+    bd.commit()
+    return factura_bd
