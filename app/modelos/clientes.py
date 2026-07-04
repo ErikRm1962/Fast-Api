@@ -1,20 +1,16 @@
-from pydantic import BaseModel
+from sqlalchemy import Column, Integer, String
+from sqlalchemy.orm import relationship
+from ..conexion_bd import Base
 
 
-# Modelo de clientes
-class ClienteBase(BaseModel):
-    nombre: str
-    email: str
-    descripcion: str
+class ClienteBD(Base):
+    __tablename__ = "cliente"
 
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String, nullable=False)
+    email = Column(String, nullable=False)
+    descripcion = Column(String, nullable=True)
 
-class ClienteCrear(ClienteBase):
-    pass
-
-
-class ClienteEditar(ClienteBase):
-    pass
-
-
-class Cliente(ClienteBase):
-    id: int | None = None
+    facturas = relationship(
+        "FacturaBD", back_populates="cliente", cascade="all, delete-orphan"
+    )
