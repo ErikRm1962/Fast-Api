@@ -1,6 +1,6 @@
-# API de Facturación - FastAPI
+# API de Facturación - FastAPI + SQLite
 
-Proyecto desarrollado como evidencia de aprendizaje SENA. Es una API REST construida con **FastAPI** que gestiona **Clientes**, **Facturas** y **Transacciones**, con relación entre ellos y CRUD completo.
+Proyecto desarrollado como evidencia de aprendizaje SENA. Es una API REST construida con **FastAPI** y **SQLAlchemy** que gestiona **Clientes**, **Facturas** y **Transacciones**, con relación entre ellas y CRUD completo, persistiendo los datos en una base de datos **SQLite**.
 
 ## Descripción del proyecto
 
@@ -12,26 +12,34 @@ Proyecto desarrollado como evidencia de aprendizaje SENA. Es una API REST constr
 
 ```
 app/
-├── main.py                  # Punto de entrada, arma la app FastAPI
-├── listas.py                 # Listas en memoria que simulan la "base de datos"
-├── modelos/
-│   ├── clientes.py            # Modelos Pydantic de Cliente
-│   ├── facturas.py            # Modelos Pydantic de Factura (con valor_total calculado)
-│   └── transacciones.py       # Modelos Pydantic de Transaccion
-└── enrutadores/
-    ├── clientes.py             # Endpoints CRUD de clientes
-    ├── facturas.py             # Endpoints CRUD de facturas
-    └── transacciones.py        # Endpoints CRUD de transacciones
+├── main.py                     # Punto de entrada, arma la app y crea las tablas
+├── conexion_bd.py                # Configuración de conexión a SQLite (SQLAlchemy)
+├── modelos/                      # Modelos de tabla (SQLAlchemy) - la base de datos
+│   ├── clientes.py
+│   ├── facturas.py
+│   └── transacciones.py
+├── esquemas/                     # Esquemas Pydantic - validación de la API
+│   ├── clientes.py
+│   ├── facturas.py
+│   └── transacciones.py
+└── enrutadores/                  # Endpoints CRUD por entidad
+    ├── clientes.py
+    ├── facturas.py
+    └── transacciones.py
 requirements.txt
 ```
 
-## Relación entre entidades
+## Base de datos
 
-- Un **Cliente** puede tener muchas **Facturas** (relación 1 a N).
-- Una **Factura** puede tener muchas **Transacciones** (relación 1 a N).
-- El **valor_total** de una factura se calcula dinámicamente a partir de sus transacciones (campo `computed_field`).
+El proyecto usa **SQLite** a través de **SQLAlchemy** como ORM. Al iniciar la aplicación, se crea automáticamente el archivo `bd_facturacion.sqlite3` en la raíz del proyecto con las 3 tablas y sus relaciones (llaves foráneas).
 
-Como no se usa base de datos externa, la persistencia se simula con listas en memoria (`listas.py`), que se reinician cada vez que se reinicia el servidor.
+### Relación entre entidades
+
+- Un **Cliente** puede tener muchas **Facturas** (relación 1 a N, llave foránea `cliente_id` en `factura`).
+- Una **Factura** puede tener muchas **Transacciones** (relación 1 a N, llave foránea `factura_id` en `transaccion`).
+- El **valor_total** de una factura se calcula dinámicamente a partir de sus transacciones (campo `computed_field` en el esquema Pydantic).
+
+Puedes revisar la base de datos generada con la extensión **SQLite Viewer** en VS Code, abriendo el archivo `bd_facturacion.sqlite3`.
 
 ## Endpoints disponibles
 
@@ -86,6 +94,7 @@ Como no se usa base de datos externa, la persistencia se simula con listas en me
    ```bash
    fastapi dev app/main.py
    ```
+   Al iniciar, se crea automáticamente el archivo `bd_facturacion.sqlite3` con las tablas.
 
 5. Abrir la documentación interactiva (Swagger UI):
    ```
@@ -94,7 +103,13 @@ Como no se usa base de datos externa, la persistencia se simula con listas en me
 
 ## Proceso de desarrollo (historial de commits)
 
-El proyecto se desarrolló de forma incremental, empezando sin estructura (todo en un solo `main.py`) y evolucionando hacia una estructura organizada por carpetas (`modelos` y `enrutadores`). El historial de commits refleja este proceso, ver sección de commits abajo.
+El proyecto se desarrolló de forma incremental:
+1. Versión inicial sin estructura (todo en un `main.py`, listas en memoria).
+2. Reestructuración con carpetas (`modelos`, `enrutadores`), aún con listas en memoria.
+3. Migración a base de datos real con SQLAlchemy y SQLite, con relaciones entre tablas.
+4. Documentación final.
+
+El historial de commits refleja este proceso completo.
 
 ## Autor
 
